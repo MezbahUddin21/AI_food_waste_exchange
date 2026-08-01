@@ -154,6 +154,22 @@ export class AssignmentsService {
     return { kind, data_url: dataUrl };
   }
 
+  /** Latest active assignment for a donation (donor/NGO need this to show QRs). */
+  async findByDonation(donationId: string) {
+    const { data } = await this.supabase
+      .from('assignments')
+      .select('*')
+      .eq('donation_id', donationId)
+      .neq('status', 'cancelled')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!data) throw new NotFoundException('No active assignment for this donation');
+    // Don't leak QR tokens here — QR images have their own authorized endpoints.
+    const { pickup_qr_token, delivery_qr_token, ...safe } = data;
+    return safe;
+  }
+
   // ---- helpers ----
 
   private async getById(id: string) {

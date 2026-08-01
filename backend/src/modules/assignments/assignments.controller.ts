@@ -41,6 +41,12 @@ export class AssignmentsController {
     return this.assignments.listMine(user);
   }
 
+  @Get('by-donation/:donationId')
+  @ApiOperation({ summary: 'Active assignment for a donation (no QR tokens leaked)' })
+  byDonation(@Param('donationId', ParseUUIDPipe) donationId: string) {
+    return this.assignments.findByDonation(donationId);
+  }
+
   @Post(':id/accept')
   @Roles('volunteer')
   accept(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
