@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
 import { RolesGuard } from './modules/auth/roles.guard';
+import { Public } from './modules/auth/decorators';
 import { DonationsModule } from './modules/donations/donations.module';
 import { MatchingModule } from './modules/matching/matching.module';
 import { AssignmentsModule } from './modules/assignments/assignments.module';
@@ -16,6 +17,7 @@ import { SupabaseModule } from './lib/supabase.module';
 /** Unauthenticated liveness probe — also what Render pings to wake the service. */
 @Controller('health')
 class HealthController {
+  @Public()
   @Get()
   health() {
     return { status: 'ok', ts: new Date().toISOString() };

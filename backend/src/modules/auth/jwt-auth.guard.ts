@@ -8,25 +8,36 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { SupabaseClient } from '@supabase/supabase-js';
-import * as jwt from 'jsonwebtoken';
+import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 import { SUPABASE } from '../../lib/supabase.module';
 import { IS_PUBLIC_KEY } from './decorators';
 import type { AuthUser, UserRole } from './auth.types';
 
 /**
- * Verifies the Supabase access token (HS256, signed with the project JWT secret)
- * locally — no network round-trip per request. The user's role is loaded from our
- * users table and cached for 60s to keep per-request DB load minimal.
+ * Verifies Supabase access tokens locally — no network round-trip per request.
+ *
+ * Newer Supabase projects sign with asymmetric keys (ES256/RS256); we verify
+ * those against the project's public JWKS endpoint (fetched once and cached by
+ * jose). Older projects sign HS256 with the legacy JWT secret, which we fall
+ * back to if configured. The user's role is loaded from our users table and
+ * cached for 60s to keep per-request DB load minimal.
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   private roleCache = new Map<string, { role: UserRole | null; at: number }>();
+  private jwks: ReturnType<typeof createRemoteJWKSet>;
+  private hsSecret?: Uint8Array;
 
   constructor(
     private reflector: Reflector,
-    private config: ConfigService,
+    config: ConfigService,
     @Inject(SUPABASE) private supabase: SupabaseClient,
-  ) {}
+  ) {
+    const url = config.getOrThrow<string>('SUPABASE_URL');
+    this.jwks = createRemoteJWKSet(new URL(`${url}/auth/v1/.well-known/jwks.json`));
+    const secret = config.get<string>('SUPABASE_JWT_SECRET');
+    if (secret) this.hsSecret = new TextEncoder().encode(secret);
+  }
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -39,14 +50,7 @@ export class JwtAuthGuard implements CanActivate {
     const token = (req.headers.authorization ?? '').replace(/^Bearer\s+/i, '');
     if (!token) throw new UnauthorizedException('Missing bearer token');
 
-    let payload: jwt.JwtPayload;
-    try {
-      payload = jwt.verify(token, this.config.getOrThrow('SUPABASE_JWT_SECRET'), {
-        algorithms: ['HS256'],
-      }) as jwt.JwtPayload;
-    } catch {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
+    const payload = await this.verify(token);
 
     const user: AuthUser = {
       id: payload.sub as string,
@@ -55,6 +59,27 @@ export class JwtAuthGuard implements CanActivate {
     };
     req.user = user;
     return true;
+  }
+
+  private async verify(token: string): Promise<JWTPayload> {
+    // Asymmetric (ES256/RS256) — the default on current Supabase projects.
+    try {
+      const { payload } = await jwtVerify(token, this.jwks);
+      return payload;
+    } catch (jwksErr) {
+      // Legacy HS256 fallback if a JWT secret is configured.
+      if (this.hsSecret) {
+        try {
+          const { payload } = await jwtVerify(token, this.hsSecret, {
+            algorithms: ['HS256'],
+          });
+          return payload;
+        } catch {
+          /* fall through to unified error */
+        }
+      }
+      throw new UnauthorizedException('Invalid or expired token');
+    }
   }
 
   private async getRole(userId: string): Promise<UserRole | null> {
@@ -67,7 +92,9 @@ export class JwtAuthGuard implements CanActivate {
       .eq('id', userId)
       .maybeSingle();
     const role = (data?.role as UserRole) ?? null;
-    this.roleCache.set(userId, { role, at: Date.now() });
+    // Only cache real roles: a null means "not registered yet", and caching it
+    // would 403 the user for 60s right after they complete registration.
+    if (role) this.roleCache.set(userId, { role, at: Date.now() });
     return role;
   }
 }
