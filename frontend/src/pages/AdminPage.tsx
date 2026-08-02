@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { get, post } from '../lib/api';
+import { Icon } from '../components/Icon';
+import { EmptyState, PageHeader } from '../components/ui';
 
 interface PendingOrg {
   id: string;
@@ -29,17 +31,17 @@ export default function AdminPage() {
 
   const Section = ({ title, rows, type }: { title: string; rows: PendingOrg[]; type: 'donor' | 'ngo' }) => (
     <div className="card">
-      <h2 className="mb-3 font-semibold">{title}</h2>
-      {rows.length === 0 && <p className="text-sm text-gray-500">Nothing pending.</p>}
+      <h2 className="section-title mb-3">{title}</h2>
+      {rows.length === 0 && <p className="text-sm text-gray-500">Nothing pending 🎉</p>}
       <div className="space-y-2">
         {rows.map((o) => (
-          <div key={o.id} className="flex items-center justify-between rounded-lg border border-gray-200 p-3">
+          <div key={o.id} className="flex items-center justify-between rounded-xl border border-gray-200 p-3">
             <div>
               <p className="text-sm font-medium">{o.org_name}</p>
               <p className="text-xs text-gray-500">{o.address}</p>
             </div>
-            <button className="btn-primary text-xs" onClick={() => verify(type, o.id)}>
-              ✓ Verify
+            <button className="btn-primary !py-1.5 text-xs" onClick={() => verify(type, o.id)}>
+              <Icon name="check" className="h-3.5 w-3.5" /> Verify
             </button>
           </div>
         ))}
@@ -49,7 +51,10 @@ export default function AdminPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-bold">Admin — pending verifications</h1>
+      <PageHeader
+        title="Verifications"
+        subtitle="Review and approve new donors and NGOs before they enter the matching pool"
+      />
       <div className="grid gap-6 md:grid-cols-2">
         <Section title="Donors" rows={donors} type="donor" />
         <Section title="NGOs" rows={ngos} type="ngo" />

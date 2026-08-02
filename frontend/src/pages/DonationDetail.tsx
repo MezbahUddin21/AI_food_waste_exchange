@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { get } from '../lib/api';
 import { Donation, FOOD_LABELS, RankedNgo, timeLeft } from '../lib/types';
 import StatusBadge from '../components/StatusBadge';
 import { useAuth } from '../auth/AuthContext';
+import { Icon } from '../components/Icon';
 
 interface StatusEvent {
   id: number;
@@ -33,7 +34,11 @@ export default function DonationDetail() {
   if (!donation) return <p className="text-gray-500">Loading…</p>;
 
   return (
-    <div className="grid gap-6 md:grid-cols-3">
+    <div>
+      <Link to="/app" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900">
+        <Icon name="arrow-right" className="h-4 w-4 rotate-180" /> Back to dashboard
+      </Link>
+      <div className="grid gap-6 md:grid-cols-3">
       <div className="md:col-span-2">
         <div className="card">
           {donation.photo_urls?.[0] && (
@@ -88,16 +93,19 @@ export default function DonationDetail() {
       </div>
 
       <div className="card h-fit">
-        <h2 className="mb-3 font-semibold">Timeline</h2>
+        <h2 className="section-title mb-3 flex items-center gap-2">
+          <Icon name="history" className="h-4.5 w-4.5 h-5 w-5 text-brand-600" /> Timeline
+        </h2>
         <ol className="space-y-3">
           {history.map((e) => (
             <li key={e.id} className="border-l-2 border-brand-500 pl-3">
-              <p className="text-sm font-medium">{e.to_status.replace('_', ' ')}</p>
+              <p className="text-sm font-medium capitalize">{e.to_status.replace('_', ' ')}</p>
               <p className="text-xs text-gray-500">{new Date(e.created_at).toLocaleString()}</p>
               {e.note && <p className="text-xs text-gray-400">{e.note}</p>}
             </li>
           ))}
         </ol>
+      </div>
       </div>
     </div>
   );

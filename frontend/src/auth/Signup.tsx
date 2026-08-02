@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { post } from '../lib/api';
 import { geocode } from '../lib/geocode';
 import { useAuth } from './AuthContext';
+import { Icon } from '../components/Icon';
 
 type Role = 'donor' | 'ngo' | 'volunteer' | 'government';
 
@@ -80,7 +81,7 @@ export default function Signup() {
         ...(role === 'volunteer' ? { vehicleType: vehicle, serviceRadiusKm: radius, location } : {}),
       });
       await refreshProfile();
-      navigate('/');
+      navigate('/app');
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -89,10 +90,24 @@ export default function Signup() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="card w-full max-w-md">
-        <h1 className="mb-1 text-2xl font-bold text-brand-700">Create account</h1>
-        <p className="mb-6 text-sm text-gray-500">Step {step} of 2</p>
+    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(60%_50%_at_50%_0%,rgba(34,197,94,0.08),transparent)] p-4">
+      <div className="card w-full max-w-md !p-8">
+        <Link to="/" className="mb-6 flex items-center gap-2 font-display text-lg font-bold text-gray-900">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">
+            <Icon name="leaf" className="h-5 w-5" />
+          </span>
+          FoodBridge
+        </Link>
+        <h1 className="font-display text-2xl font-bold text-gray-900">Create account</h1>
+        <div className="mb-6 mt-2 flex items-center gap-2">
+          {[1, 2].map((s) => (
+            <span
+              key={s}
+              className={`h-1.5 flex-1 rounded-full ${step >= s ? 'bg-brand-500' : 'bg-gray-200'}`}
+            />
+          ))}
+          <span className="text-xs text-gray-400">Step {step}/2</span>
+        </div>
 
         {step === 1 && (
           <form onSubmit={createAccount} className="space-y-4">

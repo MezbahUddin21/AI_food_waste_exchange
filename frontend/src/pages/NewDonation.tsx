@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { post } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { FOOD_LABELS } from '../lib/types';
+import { Icon } from '../components/Icon';
+import { PageHeader } from '../components/ui';
 
 /** Donor: create a listing. Photo goes to Supabase Storage; AI fills the window. */
 export default function NewDonation() {
@@ -45,7 +47,7 @@ export default function NewDonation() {
         packaging,
         ambientTempC: ambient === '' ? undefined : ambient,
       });
-      navigate('/');
+      navigate('/app');
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -55,7 +57,10 @@ export default function NewDonation() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h1 className="mb-4 text-xl font-bold">List surplus food</h1>
+      <PageHeader
+        title="List surplus food"
+        subtitle="Takes under a minute — AI estimates the safe pickup window for you"
+      />
       <form onSubmit={submit} className="card space-y-4">
         <div>
           <label className="label">Title</label>
@@ -114,8 +119,10 @@ export default function NewDonation() {
             <input className="input" type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
           </div>
         </div>
-        <p className="text-xs text-gray-500">
-          🤖 On submit, the AI estimates the safe pickup window from category, prep time, storage and temperature.
+        <p className="flex items-start gap-2 rounded-xl bg-brand-50 p-3 text-xs text-brand-800">
+          <Icon name="sparkles" className="mt-0.5 h-4 w-4 shrink-0" />
+          On submit, the AI estimates the safe pickup window from category, prep time, storage and
+          temperature — nearby NGOs are notified instantly.
         </p>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button className="btn-primary w-full" disabled={busy}>

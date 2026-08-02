@@ -4,11 +4,13 @@ import { get, post } from '../lib/api';
 import { Donation, FOOD_LABELS, timeLeft } from '../lib/types';
 import StatusBadge from '../components/StatusBadge';
 import QrModal from '../components/QrModal';
+import { Icon } from '../components/Icon';
+import { CardSkeleton, EmptyState, PageHeader, StatCard } from '../components/ui';
 
-/** Donor home: their listings + status + pickup QR when a volunteer is en route. */
+/** Donor home: impact stats, listings, pickup QR access. */
 export default function DonorDashboard() {
   const [donations, setDonations] = useState<Donation[]>([]);
-  const [qrFor, setQrFor] = useState<string | null>(null); // assignment id
+  const [qrFor, setQrFor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = () =>
@@ -20,62 +22,83 @@ export default function DonorDashboard() {
     load();
   }, []);
 
-  const showPickupQr = async (donationId: string) => {
-    // find assignment via history endpoint? Simpler: the API exposes QR by assignment,
-    // so we fetch the donation detail which includes assignment info in Phase 5.
-    // For now query assignments through donation history:
-    const events = await get<{ to_status: string }[]>(`/donations/${donationId}/history`);
-    void events;
-    setQrFor(donationId);
-  };
+  const verified = donations.filter((d) => d.status === 'verified');
+  const active = donations.filter((d) =>
+    ['listed', 'claimed', 'assigned', 'in_transit', 'delivered'].includes(d.status),
+  );
+  const mealsSaved = verified.reduce((s, d) => s + d.quantity_servings, 0);
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold">My donations</h1>
-        <Link to="/donations/new" className="btn-primary">
-          + List surplus food
-        </Link>
+      <PageHeader
+        title="My donations"
+        subtitle="List surplus food and track it to a verified delivery"
+        action={
+          <Link to="/app/donations/new" className="btn-primary">
+            <Icon name="plus" className="h-4 w-4" /> List surplus food
+          </Link>
+        }
+      />
+
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard icon="heart" label="Meals saved" value={mealsSaved} accent />
+        <StatCard icon="package" label="Total listings" value={donations.length} />
+        <StatCard icon="truck" label="Active now" value={active.length} />
+        <StatCard icon="check-circle" label="Completed" value={verified.length} />
       </div>
 
-      {loading && <p className="text-gray-500">Loading…</p>}
+      {loading && <CardSkeleton />}
+
       {!loading && donations.length === 0 && (
-        <div className="card text-center text-gray-500">
-          No listings yet. List your surplus food and nearby NGOs will be notified.
-        </div>
+        <EmptyState
+          icon="package"
+          title="No listings yet"
+          hint="List your surplus food and nearby NGOs will be notified instantly. The AI will estimate a safe pickup window for you."
+          action={
+            <Link to="/app/donations/new" className="btn-primary">
+              <Icon name="plus" className="h-4 w-4" /> Create your first listing
+            </Link>
+          }
+        />
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
         {donations.map((d) => (
-          <div key={d.id} className="card">
-            <div className="mb-2 flex items-start justify-between">
-              <h2 className="font-semibold">{d.title}</h2>
+          <div key={d.id} className="card-hover">
+            {d.photo_urls?.[0] && (
+              <img src={d.photo_urls[0]} alt="" className="mb-3 h-36 w-full rounded-xl object-cover" />
+            )}
+            <div className="mb-2 flex items-start justify-between gap-2">
+              <h2 className="font-semibold text-gray-900">{d.title}</h2>
               <StatusBadge status={d.status} />
             </div>
             <p className="text-sm text-gray-600">
               {FOOD_LABELS[d.food_category]} · {d.quantity_servings} servings
               {d.quantity_kg ? ` · ${d.quantity_kg} kg` : ''}
             </p>
-            <p className="mt-1 text-sm">
-              <span className="font-medium text-amber-700">⏱ {timeLeft(d.pickup_window_end)}</span>
-              {d.spoilage_confidence != null && (
-                <span className="ml-2 text-xs text-gray-400">
-                  (AI confidence {(Number(d.spoilage_confidence) * 100).toFixed(0)}%)
-                </span>
-              )}
-            </p>
-            <div className="mt-3 flex gap-2">
-              <Link to={`/donations/${d.id}`} className="btn-outline text-xs">
+            {!['verified', 'expired', 'cancelled'].includes(d.status) && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-sm">
+                <Icon name="clock" className="h-4 w-4 text-amber-600" />
+                <span className="font-medium text-amber-700">{timeLeft(d.pickup_window_end)}</span>
+                {d.spoilage_confidence != null && (
+                  <span className="text-xs text-gray-400">
+                    · AI {(Number(d.spoilage_confidence) * 100).toFixed(0)}% confident
+                  </span>
+                )}
+              </p>
+            )}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link to={`/app/donations/${d.id}`} className="btn-outline !py-1.5 text-xs">
                 Details
               </Link>
               {(d.status === 'assigned' || d.status === 'in_transit') && (
-                <button className="btn-primary text-xs" onClick={() => showPickupQr(d.id)}>
-                  Show pickup QR
+                <button className="btn-primary !py-1.5 text-xs" onClick={() => setQrFor(d.id)}>
+                  <Icon name="qr" className="h-3.5 w-3.5" /> Pickup QR
                 </button>
               )}
               {(d.status === 'listed' || d.status === 'claimed') && (
                 <button
-                  className="btn-outline text-xs text-red-600"
+                  className="btn-danger !py-1.5 text-xs"
                   onClick={async () => {
                     await post(`/donations/${d.id}/cancel`);
                     load();

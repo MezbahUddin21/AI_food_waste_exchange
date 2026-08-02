@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, Marker, Polyline, Popup, TileLayer } from 'react-leaflet';
+import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
 import L from 'leaflet';
 import { get, post } from '../lib/api';
 import { Assignment, timeLeft } from '../lib/types';
 import QrScanner from '../components/QrScanner';
+import { Icon } from '../components/Icon';
+import { CardSkeleton, EmptyState, PageHeader, StatCard } from '../components/ui';
 
 const icon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -17,8 +19,13 @@ export default function VolunteerDashboard() {
   const [scanning, setScanning] = useState<Assignment | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const load = () => get<Assignment[]>('/assignments/mine').then(setAssignments).catch(() => {});
+  const load = () =>
+    get<Assignment[]>('/assignments/mine')
+      .then(setAssignments)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   useEffect(() => {
     load();
   }, []);
@@ -46,14 +53,37 @@ export default function VolunteerDashboard() {
 
   const active = assignments.filter((a) => !['delivered', 'cancelled'].includes(a.status));
   const done = assignments.filter((a) => ['delivered', 'cancelled'].includes(a.status));
+  const delivered = assignments.filter((a) => a.status === 'delivered');
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-bold">My pickup tasks</h1>
-      {message && <p className="mb-3 rounded-lg bg-green-100 p-3 text-sm text-green-800">{message}</p>}
-      {error && <p className="mb-3 rounded-lg bg-red-100 p-3 text-sm text-red-800">{error}</p>}
+      <PageHeader
+        title="My pickup tasks"
+        subtitle="Accept a task, scan the donor's QR at pickup and the NGO's QR at delivery"
+      />
 
-      {active.length === 0 && <div className="card mb-4 text-center text-gray-500">No active tasks.</div>}
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <StatCard icon="truck" label="Active tasks" value={active.length} accent />
+        <StatCard icon="check-circle" label="Deliveries completed" value={delivered.length} />
+        <StatCard
+          icon="heart"
+          label="Meals carried"
+          value={delivered.reduce((s, a) => s + (a.donations?.quantity_servings ?? 0), 0)}
+        />
+      </div>
+
+      {message && <p className="mb-4 rounded-xl bg-green-50 p-3 text-sm font-medium text-green-800">{message}</p>}
+      {error && <p className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+
+      {loading && <CardSkeleton count={2} />}
+
+      {!loading && active.length === 0 && (
+        <EmptyState
+          icon="truck"
+          title="No active tasks"
+          hint="When an NGO assigns you a pickup, it will appear here and you'll get a notification."
+        />
+      )}
 
       <div className="space-y-4">
         {active.map((a) => {
@@ -79,17 +109,17 @@ export default function VolunteerDashboard() {
                 <div className="flex flex-col gap-2">
                   {a.status === 'offered' && (
                     <button className="btn-primary" onClick={() => accept(a.id)}>
-                      Accept task
+                      <Icon name="check" className="h-4 w-4" /> Accept task
                     </button>
                   )}
                   {a.status === 'accepted' && (
                     <button className="btn-primary" onClick={() => setScanning(a)}>
-                      📷 Scan pickup QR
+                      <Icon name="camera" className="h-4 w-4" /> Scan pickup QR
                     </button>
                   )}
                   {a.status === 'picked_up' && (
                     <button className="btn-primary" onClick={() => setScanning(a)}>
-                      📷 Scan delivery QR
+                      <Icon name="camera" className="h-4 w-4" /> Scan delivery QR
                     </button>
                   )}
                 </div>

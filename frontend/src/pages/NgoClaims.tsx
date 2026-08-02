@@ -3,6 +3,8 @@ import { get, post } from '../lib/api';
 import { Donation, FOOD_LABELS, RankedNgo, timeLeft } from '../lib/types';
 import StatusBadge from '../components/StatusBadge';
 import QrModal from '../components/QrModal';
+import { Icon } from '../components/Icon';
+import { EmptyState, PageHeader } from '../components/ui';
 
 interface Volunteer {
   volunteer_id: string;
@@ -57,12 +59,19 @@ export default function NgoClaims() {
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-bold">My claims</h1>
-      {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+      <PageHeader
+        title="My claims"
+        subtitle="Assign volunteers, show your delivery QR, and confirm receipt"
+      />
+      {error && <p className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {claims.length === 0 && (
+        <EmptyState
+          icon="heart"
+          title="No active claims"
+          hint="Browse available food and claim a donation — it will show up here for volunteer assignment."
+        />
+      )}
       <div className="grid gap-4 md:grid-cols-2">
-        {claims.length === 0 && (
-          <div className="card col-span-2 text-center text-gray-500">No active claims.</div>
-        )}
         {claims.map((d) => (
           <div key={d.id} className="card">
             <div className="mb-1 flex items-start justify-between">
@@ -75,18 +84,18 @@ export default function NgoClaims() {
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {d.status === 'claimed' && (
-                <button className="btn-primary text-xs" onClick={() => openAssign(d)}>
-                  Assign volunteer
+                <button className="btn-primary !py-1.5 text-xs" onClick={() => openAssign(d)}>
+                  <Icon name="truck" className="h-3.5 w-3.5" /> Assign volunteer
                 </button>
               )}
               {(d.status === 'in_transit' || d.status === 'assigned') && (
-                <button className="btn-primary text-xs" onClick={() => setQrFor(d.id)}>
-                  Show delivery QR
+                <button className="btn-primary !py-1.5 text-xs" onClick={() => setQrFor(d.id)}>
+                  <Icon name="qr" className="h-3.5 w-3.5" /> Delivery QR
                 </button>
               )}
               {d.status === 'delivered' && (
-                <button className="btn-primary text-xs" onClick={() => confirmReceipt(d.id)}>
-                  ✓ Confirm receipt
+                <button className="btn-primary !py-1.5 text-xs" onClick={() => confirmReceipt(d.id)}>
+                  <Icon name="check" className="h-3.5 w-3.5" /> Confirm receipt
                 </button>
               )}
             </div>

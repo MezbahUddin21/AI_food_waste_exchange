@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { get, post } from '../lib/api';
 import { FOOD_LABELS } from '../lib/types';
+import { Icon } from '../components/Icon';
+import { PageHeader } from '../components/ui';
 
 interface EmergencyRequest {
   id: string;
@@ -50,9 +52,16 @@ export default function EmergencyPage() {
   };
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div>
+      <PageHeader
+        title="Emergency requests"
+        subtitle="Broadcast urgent needs to every donor within your chosen radius"
+      />
+      <div className="grid gap-6 md:grid-cols-2">
       <div>
-        <h1 className="mb-4 text-xl font-bold">🚨 Broadcast urgent need</h1>
+        <h2 className="section-title mb-4 flex items-center gap-2">
+          <Icon name="alert" className="h-5 w-5 text-red-500" /> Broadcast urgent need
+        </h2>
         <form onSubmit={submit} className="card space-y-4">
           <div>
             <label className="label">Food type</label>
@@ -88,7 +97,7 @@ export default function EmergencyPage() {
       </div>
 
       <div>
-        <h2 className="mb-4 text-xl font-bold">Open requests</h2>
+        <h2 className="section-title mb-4">Open requests</h2>
         <div className="space-y-3">
           {requests.length === 0 && <div className="card text-center text-gray-500">None right now.</div>}
           {requests.map((r) => (
@@ -108,6 +117,7 @@ export default function EmergencyPage() {
             </div>
           ))}
         </div>
+      </div>
       </div>
     </div>
   );

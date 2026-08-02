@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { get } from '../lib/api';
+import { PageHeader, StatCard } from '../components/ui';
 
 interface Summary {
   meals_saved: number;
@@ -39,18 +40,21 @@ export default function AnalyticsDashboard() {
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-bold">Impact analytics</h1>
+      <PageHeader
+        title="Impact analytics"
+        subtitle="Live platform metrics — meals saved, waste diverted, and community leaders"
+      />
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Stat label="Meals saved" value={summary?.meals_saved ?? '—'} accent />
-        <Stat label="Food diverted" value={summary ? `${summary.kg_diverted} kg` : '—'} />
-        <Stat label="CO₂e avoided" value={summary ? `${summary.co2e_avoided_kg} kg` : '—'} />
-        <Stat label="Completion rate" value={summary ? `${summary.completion_rate}%` : '—'} />
+        <StatCard icon="heart" label="Meals saved" value={summary?.meals_saved ?? '—'} accent />
+        <StatCard icon="package" label="Food diverted" value={summary ? `${summary.kg_diverted} kg` : '—'} />
+        <StatCard icon="leaf" label="CO₂e avoided" value={summary ? `${summary.co2e_avoided_kg} kg` : '—'} />
+        <StatCard icon="check-circle" label="Completion rate" value={summary ? `${summary.completion_rate}%` : '—'} />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="card">
-          <h2 className="mb-3 font-semibold">Listings — last 30 days</h2>
+          <h2 className="section-title mb-3">Listings — last 30 days</h2>
           {trends.length === 0 && <p className="text-sm text-gray-500">No data yet.</p>}
           <div className="flex h-40 items-end gap-1">
             {trends.map((t) => (
@@ -66,7 +70,7 @@ export default function AnalyticsDashboard() {
         </div>
 
         <div className="card">
-          <h2 className="mb-3 font-semibold">Servings by category</h2>
+          <h2 className="section-title mb-3">Servings by category</h2>
           {summary && Object.keys(summary.servings_by_category).length === 0 && (
             <p className="text-sm text-gray-500">No verified donations yet.</p>
           )}
@@ -90,23 +94,14 @@ export default function AnalyticsDashboard() {
         </div>
 
         <div className="card">
-          <h2 className="mb-3 font-semibold">🏆 Top donors</h2>
+          <h2 className="section-title mb-3">🏆 Top donors</h2>
           <Ranking rows={board?.top_donors ?? []} />
         </div>
         <div className="card">
-          <h2 className="mb-3 font-semibold">🏆 Top NGOs</h2>
+          <h2 className="section-title mb-3">🏆 Top NGOs</h2>
           <Ranking rows={board?.top_ngos ?? []} />
         </div>
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
-  return (
-    <div className={`card text-center ${accent ? 'border-brand-500 bg-brand-50' : ''}`}>
-      <p className={`text-2xl font-bold ${accent ? 'text-brand-700' : ''}`}>{value}</p>
-      <p className="text-sm text-gray-500">{label}</p>
     </div>
   );
 }
