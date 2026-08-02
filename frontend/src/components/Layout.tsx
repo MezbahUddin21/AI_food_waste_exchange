@@ -5,8 +5,10 @@ import { get, onColdStart, post } from '../lib/api';
 
 interface Notification {
   id: number;
+  type: string;
   title: string;
   body: string;
+  data: Record<string, string> | null;
   read: boolean;
   created_at: string;
 }
@@ -47,6 +49,23 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   const unread = notifications.filter((n) => !n.read).length;
   const links = profile ? NAV[profile.role] ?? [] : [];
+
+  /** Where a notification should take the user, based on its payload/type. */
+  const notificationTarget = (n: Notification): string => {
+    if (n.data?.emergency_request_id) return '/emergency';
+    if (n.type === 'assignment_offered' || n.type === 'assignment_accepted') return '/'; // volunteer task list
+    if (n.data?.donation_id) return `/donations/${n.data.donation_id}`;
+    return '/';
+  };
+
+  const openNotification = async (n: Notification) => {
+    setShowNotif(false);
+    if (!n.read) {
+      setNotifications((ns) => ns.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+      post(`/notifications/${n.id}/read`).catch(() => {});
+    }
+    navigate(notificationTarget(n));
+  };
 
   return (
     <div className="min-h-screen">
@@ -105,11 +124,15 @@ export default function Layout({ children }: { children: ReactNode }) {
                       <p className="p-4 text-sm text-gray-500">Nothing yet</p>
                     )}
                     {notifications.map((n) => (
-                      <div key={n.id} className={`border-b p-3 last:border-0 ${n.read ? '' : 'bg-brand-50'}`}>
+                      <button
+                        key={n.id}
+                        className={`block w-full border-b p-3 text-left last:border-0 hover:bg-gray-50 ${n.read ? '' : 'bg-brand-50'}`}
+                        onClick={() => openNotification(n)}
+                      >
                         <p className="text-sm font-medium">{n.title}</p>
                         <p className="text-xs text-gray-600">{n.body}</p>
                         <p className="mt-1 text-xs text-gray-400">{new Date(n.created_at).toLocaleString()}</p>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>

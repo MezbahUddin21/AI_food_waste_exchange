@@ -51,4 +51,14 @@ export class NotificationsService {
     await this.supabase.from('notifications').update({ read: true }).eq('user_id', userId).eq('read', false);
     return { ok: true };
   }
+
+  /** Mark one notification read; scoped to the owner so IDs can't be probed. */
+  async markRead(userId: string, id: number) {
+    await this.supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', id)
+      .eq('user_id', userId);
+    return { ok: true };
+  }
 }

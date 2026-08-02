@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators';
 import type { AuthUser } from '../auth/auth.types';
@@ -18,5 +18,10 @@ export class NotificationsController {
   @Post('read-all')
   readAll(@CurrentUser() user: AuthUser) {
     return this.notifications.markAllRead(user.id);
+  }
+
+  @Post(':id/read')
+  readOne(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
+    return this.notifications.markRead(user.id, id);
   }
 }
