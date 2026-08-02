@@ -8,6 +8,7 @@ import {
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE } from '../../lib/supabase.module';
 import { MlClient } from '../../lib/ml.client';
+import { withGeoJsonLocation } from '../../lib/geo';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { AuthUser } from '../auth/auth.types';
 import { CreateDonationDto, ListDonationsQueryDto } from './dto/donations.dto';
@@ -86,7 +87,7 @@ export class DonationsService {
         .in('id', ids);
       const distById = new Map((nearby as any[]).map((r) => [r.donation_id, r.distance_km]));
       return (data ?? [])
-        .map((d) => ({ ...d, distance_km: distById.get(d.id) }))
+        .map((d) => ({ ...withGeoJsonLocation(d), distance_km: distById.get(d.id) }))
         .sort((a, b) => (a.distance_km ?? 0) - (b.distance_km ?? 0));
     }
 
@@ -99,7 +100,7 @@ export class DonationsService {
     if (query.category) q = q.eq('food_category', query.category);
     const { data, error } = await q;
     if (error) throw new BadRequestException(error.message);
-    return data;
+    return (data ?? []).map(withGeoJsonLocation);
   }
 
   async getById(id: string) {
@@ -109,7 +110,7 @@ export class DonationsService {
       .eq('id', id)
       .maybeSingle();
     if (!data) throw new NotFoundException('Donation not found');
-    return data;
+    return withGeoJsonLocation(data);
   }
 
   /** Donor's own listings. */
@@ -120,7 +121,7 @@ export class DonationsService {
       .select('*')
       .eq('donor_id', donor.id)
       .order('created_at', { ascending: false });
-    return data ?? [];
+    return (data ?? []).map(withGeoJsonLocation);
   }
 
   /** NGO claims a listed donation. */

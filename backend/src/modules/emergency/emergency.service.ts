@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE } from '../../lib/supabase.module';
+import { wkbToLatLng } from '../../lib/geo';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { AuthUser } from '../auth/auth.types';
 
@@ -41,18 +42,18 @@ export class EmergencyService {
       .single();
     if (error) throw new BadRequestException(error.message);
 
-    // Broadcast to donors within radius (raw spatial query via RPC on donors)
-    const coords = (ngo.location as any)?.coordinates;
-    if (coords) {
+    // Broadcast to donors within radius
+    const ngoLoc = wkbToLatLng(ngo.location);
+    if (ngoLoc) {
       const { data: donors } = await this.supabase
         .from('donors')
         .select('user_id, location');
       // Filter in app for simplicity at this scale; donors table is small.
       // (A dedicated RPC like nearby_ngos would be the next optimization.)
       const nearby = (donors ?? []).filter((d) => {
-        const c = (d.location as any)?.coordinates;
+        const c = wkbToLatLng(d.location);
         if (!c) return false;
-        return this.haversineKm(coords[1], coords[0], c[1], c[0]) <= radius;
+        return this.haversineKm(ngoLoc.lat, ngoLoc.lng, c.lat, c.lng) <= radius;
       });
       await this.notifications.notifyMany(
         nearby.map((d) => d.user_id),
