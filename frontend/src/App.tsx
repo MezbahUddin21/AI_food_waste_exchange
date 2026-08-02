@@ -28,7 +28,8 @@ function Home() {
     case 'admin':
       return <AnalyticsDashboard />;
     default:
-      return <p className="text-gray-500">Finish registration to continue.</p>;
+      // Signed in but no role profile yet → finish registration
+      return <Navigate to="/signup" replace />;
   }
 }
 

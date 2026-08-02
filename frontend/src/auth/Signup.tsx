@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { post } from '../lib/api';
@@ -21,16 +21,40 @@ export default function Signup() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
-  const { refreshProfile } = useAuth();
+  const { session, profile, refreshProfile } = useAuth();
+
+  // Already signed in but profile not registered yet (e.g. came back after
+  // confirming email) → skip account creation, go straight to role setup.
+  useEffect(() => {
+    if (session && !profile) setStep(2);
+  }, [session, profile]);
 
   const createAccount = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError('');
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      setBusy(false);
+      setError(error.message);
+      return;
+    }
+    // If email confirmation is enabled in Supabase, signUp returns no session —
+    // without one we can't call the API in step 2. Try signing in directly
+    // (works when confirmation is off); otherwise tell the user what to do.
+    if (!data.session) {
+      const { data: signIn } = await supabase.auth.signInWithPassword({ email, password });
+      if (!signIn.session) {
+        setBusy(false);
+        setError(
+          'Check your inbox and confirm your email, then sign in to finish registration. ' +
+            '(Or disable "Confirm email" in Supabase Auth settings for instant signups.)',
+        );
+        return;
+      }
+    }
     setBusy(false);
-    if (error) setError(error.message);
-    else setStep(2);
+    setStep(2);
   };
 
   const completeProfile = async (e: FormEvent) => {
