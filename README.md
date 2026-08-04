@@ -1,4 +1,4 @@
-# 🍽️ FoodBridge — AI Food Waste Exchange Platform
+##AI Food Waste Exchange Platform
 
 **Rescue surplus food before it spoils.** FoodBridge connects food donors (restaurants, supermarkets, hotels, bakeries) with nearby NGOs, shelters, and volunteers in real time. AI estimates spoilage windows, ranks the best NGO matches for every donation, and forecasts demand so food gets to people — not landfills.
 ---
