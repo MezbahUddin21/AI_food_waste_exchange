@@ -6,6 +6,11 @@ import { FOOD_LABELS } from '../lib/types';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/ui';
 
+const localDateTimeValue = (date: Date) => {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+};
+
 /** Donor: create a listing. Photo goes to Supabase Storage; AI fills the window. */
 export default function NewDonation() {
   const [title, setTitle] = useState('');
@@ -13,7 +18,7 @@ export default function NewDonation() {
   const [category, setCategory] = useState('cooked_meal');
   const [servings, setServings] = useState(10);
   const [kg, setKg] = useState<number | ''>('');
-  const [preparedAt, setPreparedAt] = useState(() => new Date().toISOString().slice(0, 16));
+  const [preparedAt, setPreparedAt] = useState(() => localDateTimeValue(new Date()));
   const [storage, setStorage] = useState('room_temp');
   const [packaging, setPackaging] = useState('covered');
   const [ambient, setAmbient] = useState<number | ''>('');
