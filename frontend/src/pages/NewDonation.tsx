@@ -129,7 +129,7 @@ export default function NewDonation() {
         <p className="flex items-start gap-2 rounded-xl bg-brand-50 p-3 text-xs text-brand-800">
           <Icon name="sparkles" className="mt-0.5 h-4 w-4 shrink-0" />
           On submit, the AI estimates the safe pickup window from category, prep time, storage and
-          temperature — nearby NGOs are notified instantly.
+          temperature; the listing then becomes available to nearby verified NGOs.
         </p>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button className="btn-primary w-full" disabled={busy}>

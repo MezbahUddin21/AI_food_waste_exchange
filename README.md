@@ -59,8 +59,8 @@ listed ──▶ claimed ──▶ assigned ──▶ in_transit ──▶ deliv
    └────────────▶ expired / cancelled
 ```
 
-1. **Donor lists** surplus food. The ML service immediately predicts an expiry window (`predicted_expiry_at`).
-2. **Matching engine** scores nearby NGOs (`score = 0.40·distance + 0.25·category-fit + 0.20·capacity + 0.15·reliability`) and notifies the best matches.
+1. **Donor lists** surplus food. The ML service immediately predicts `pickup_window_start`, `pickup_window_end`, `shelf_hours`, and `confidence`.
+2. **Matching engine** scores nearby NGOs (`score = 0.40·distance + 0.25·category-fit + 0.20·capacity + 0.15·reliability`) when recommendations are requested.
 3. **NGO claims** the donation, then either self-picks-up or requests a volunteer.
 4. **Volunteer accepts** the assignment (`offered → accepted → picked_up → delivered`).
 5. **NGO verifies** receipt — impact metrics (meals, kg, CO₂e) are recorded and aggregated on the analytics dashboard.
@@ -111,7 +111,7 @@ Every transition is written to an append-only `status_events` audit table.
 
 All three endpoints are **deliberately interpretable v1 models** with a documented upgrade path — every constant is defensible to a food-safety reviewer, and each module exposes the same interface a trained model would, so they can be swapped in-place once real outcome data accumulates.
 
-### 1. Spoilage Prediction — `POST /spoilage/predict`
+### 1. Spoilage Prediction — `POST /predict/spoilage`
 
 Rule-based shelf-life model grounded in **USDA food-safety guidance** (2-hour/4-hour danger-zone rules, refrigeration windows per category):
 
@@ -141,7 +141,7 @@ Weighted linear scorer over candidate NGOs:
 
 ### 3. Demand Forecast — `POST /forecast/demand`
 
-Naive seasonal baseline (weekday × hour-of-day pattern; weekends see ~30% higher shelter demand) that powers the forecast panel today. *Upgrade path:* per-area Holt-Winters or LightGBM on lagged features after ~3 months of history — identical request/response contract.
+Naive daily weekday baseline (weekends predict higher shelter demand). It is available as an ML-service API for integrations but is not yet wired into the frontend. *Upgrade path:* per-area Holt-Winters or LightGBM on lagged features after ~3 months of history — identical request/response contract.
 
 ## Data Model
 
@@ -277,13 +277,13 @@ Backend  (base: /api/v1)
   assignments/    volunteer offer / accept / pickup / deliver
   emergency/      urgent NGO requests + donor responses
   notifications/  list, mark-read (clickable deep links)
-  analytics/      impact metrics, leaderboards, forecast panel
+  analytics/      impact metrics, trends, leaderboards
   admin/          org verification, moderation
 
 ML service
-  POST /spoilage/predict   → { predicted_expiry_at, confidence, rationale }
-  POST /rank/ngos          → ranked candidates with per-signal score breakdown
-  POST /forecast/demand    → hourly demand estimates per area
+  POST /predict/spoilage   → { pickup_window_start, pickup_window_end, shelf_hours, confidence }
+  POST /rank/ngos          → { ranked: [{ ...candidate, score }] }
+  POST /forecast/demand    → { model_version, points: [{ date, predicted_servings, confidence }] }
 ```
 
 ## Free-Tier Hosting Notes
