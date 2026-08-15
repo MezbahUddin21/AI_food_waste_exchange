@@ -65,7 +65,12 @@ export class DonationsService {
       .single();
     if (error) throw new BadRequestException(error.message);
 
-    await this.recordEvent(data.id, null, 'listed', user.id);
+    try {
+      await this.recordEvent(data.id, null, 'listed', user.id);
+    } catch (eventError) {
+      await this.supabase.from('donations').delete().eq('id', data.id);
+      throw eventError;
+    }
     return data;
   }
 
@@ -211,18 +216,19 @@ export class DonationsService {
     if (!actorAllowed(user, to)) {
       throw new ForbiddenException(`Role '${user.role}' cannot set status '${to}'`);
     }
-    // Optimistic concurrency: status must still be what we read (two NGOs racing to claim).
-    const { data, error } = await this.supabase
-      .from('donations')
-      .update({ status: to, ...extraFields })
-      .eq('id', donation.id)
-      .eq('status', donation.status)
-      .select('id');
+    const { error } = await this.supabase.rpc('transition_donation_atomic', {
+      p_donation_id: donation.id,
+      p_expected_status: donation.status,
+      p_new_status: to,
+      p_actor_user_id: user.id,
+      p_claimed_by_ngo: (extraFields.claimed_by_ngo as string | undefined) ?? null,
+      p_note: note ?? null,
+    });
     if (error) throw new BadRequestException(error.message);
-    if (!data?.length) {
+    /* Status update and audit event are committed by the RPC.
       throw new BadRequestException('Donation was modified concurrently — refresh and retry');
     }
-    await this.recordEvent(donation.id, donation.status, to, user.id, note);
+    */
   }
 
   /** Ensure an assignment is created only by a party that owns the donation. */
@@ -266,15 +272,16 @@ export class DonationsService {
     if (error) throw new BadRequestException(error.message);
 
     for (const donation of data ?? []) {
-      const { data: updated, error: updateError } = await this.supabase
-        .from('donations')
-        .update({ status: 'expired' })
-        .eq('id', donation.id)
-        .eq('status', 'listed')
-        .select('id');
-      if (updateError) throw new BadRequestException(updateError.message);
-      if (updated?.length) {
-        await this.recordEvent(donation.id, 'listed', 'expired', null, 'Pickup window elapsed');
+      const { error: updateError } = await this.supabase.rpc('transition_donation_atomic', {
+        p_donation_id: donation.id,
+        p_expected_status: 'listed',
+        p_new_status: 'expired',
+        p_actor_user_id: null,
+        p_claimed_by_ngo: null,
+        p_note: 'Pickup window elapsed',
+      });
+      if (updateError && !updateError.message.includes('modified concurrently')) {
+        throw new BadRequestException(updateError.message);
       }
     }
   }
@@ -305,12 +312,13 @@ export class DonationsService {
     actorUserId: string | null,
     note?: string,
   ) {
-    await this.supabase.from('status_events').insert({
+    const { error } = await this.supabase.from('status_events').insert({
       donation_id: donationId,
       from_status: from,
       to_status: to,
       actor_user_id: actorUserId,
       note: note ?? null,
     });
+    if (error) throw new BadRequestException(error.message);
   }
 }

@@ -33,14 +33,14 @@ export class AssignmentsService {
     if (!volunteer) throw new NotFoundException('Volunteer not found');
 
     // Move donation claimed → assigned (state machine enforces validity + role)
-    await this.donations.transition(user, donation, 'assigned');
-
     const { data, error } = await this.supabase
-      .from('assignments')
-      .insert({ donation_id: donationId, volunteer_id: volunteerId })
-      .select('*')
-      .single();
+      .rpc('create_assignment_atomic', {
+        p_donation_id: donationId,
+        p_volunteer_id: volunteerId,
+        p_actor_user_id: user.id,
+      });
     if (error) throw new BadRequestException(error.message);
+    if (!data) throw new BadRequestException('Assignment was not created');
 
     await this.notifications.notify(
       volunteer.user_id,
@@ -76,12 +76,16 @@ export class AssignmentsService {
     }
 
     const donation = await this.donations.getById(assignment.donation_id);
-    await this.donations.transition(user, donation, 'in_transit');
-    await this.updateStatus(assignmentId, 'picked_up', { pickup_verified_at: new Date().toISOString() });
+    const { data, error } = await this.supabase.rpc('verify_assignment_handoff_atomic', {
+      p_assignment_id: assignmentId,
+      p_kind: 'pickup',
+      p_actor_user_id: user.id,
+    });
+    if (error) throw new BadRequestException(error.message);
 
     await this.notifyNgo(donation, 'pickup_verified', 'Food picked up',
       `"${donation.title}" is on its way`);
-    return this.getById(assignmentId);
+    return data;
   }
 
   /**
@@ -98,12 +102,16 @@ export class AssignmentsService {
     }
 
     const donation = await this.donations.getById(assignment.donation_id);
-    await this.donations.transition(user, donation, 'delivered');
-    await this.updateStatus(assignmentId, 'delivered', { delivery_verified_at: new Date().toISOString() });
+    const { data, error } = await this.supabase.rpc('verify_assignment_handoff_atomic', {
+      p_assignment_id: assignmentId,
+      p_kind: 'delivery',
+      p_actor_user_id: user.id,
+    });
+    if (error) throw new BadRequestException(error.message);
 
     await this.notifyNgo(donation, 'delivery_verified', 'Delivery arrived',
       `"${donation.title}" was delivered — please confirm receipt`);
-    return this.getById(assignmentId);
+    return data;
   }
 
   /** NGO's final confirmation: delivered → verified (closes the loop for analytics). */

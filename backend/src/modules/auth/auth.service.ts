@@ -52,7 +52,7 @@ export class AuthService {
         address: dto.address,
         location: toPoint(dto.location!),
       });
-      if (error) throw new BadRequestException(error.message);
+      if (error) return this.rollbackRegistration(user.id, error.message);
     } else if (dto.role === 'ngo') {
       const { error } = await this.supabase.from('ngos').insert({
         user_id: user.id,
@@ -62,7 +62,7 @@ export class AuthService {
         capacity_meals_per_day: dto.capacityMealsPerDay ?? 100,
         ...(dto.acceptedFoodTypes ? { accepted_food_types: dto.acceptedFoodTypes } : {}),
       });
-      if (error) throw new BadRequestException(error.message);
+      if (error) return this.rollbackRegistration(user.id, error.message);
     } else if (dto.role === 'volunteer') {
       const { error } = await this.supabase.from('volunteers').insert({
         user_id: user.id,
@@ -71,10 +71,18 @@ export class AuthService {
         service_radius_km: dto.serviceRadiusKm ?? 10,
         ...(dto.location ? { location: toPoint(dto.location) } : {}),
       });
-      if (error) throw new BadRequestException(error.message);
+      if (error) return this.rollbackRegistration(user.id, error.message);
     }
 
     return this.getMe(user.id);
+  }
+
+  private async rollbackRegistration(userId: string, message: string): Promise<never> {
+    const { error } = await this.supabase.from('users').delete().eq('id', userId);
+    if (error) {
+      throw new BadRequestException(`${message}; profile rollback also failed: ${error.message}`);
+    }
+    throw new BadRequestException(message);
   }
 
   async getMe(userId: string) {
