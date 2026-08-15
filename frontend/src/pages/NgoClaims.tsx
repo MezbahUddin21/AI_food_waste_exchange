@@ -22,13 +22,7 @@ export default function NgoClaims() {
   const [error, setError] = useState('');
 
   const load = async () => {
-    // All statuses the NGO cares about post-claim
-    const all = await Promise.all(
-      ['claimed', 'assigned', 'in_transit', 'delivered'].map((s) =>
-        get<Donation[]>(`/donations?status=${s}`),
-      ),
-    );
-    setClaims(all.flat());
+    setClaims(await get<Donation[]>('/donations/claims'));
   };
   useEffect(() => {
     load();

@@ -30,6 +30,12 @@ export class DonationsController {
     return this.donations.listMine(user);
   }
 
+  @Get('claims')
+  @Roles('ngo')
+  listClaims(@CurrentUser() user: AuthUser) {
+    return this.donations.listClaims(user);
+  }
+
   @Get(':id')
   get(@Param('id', ParseUUIDPipe) id: string) {
     return this.donations.getById(id);

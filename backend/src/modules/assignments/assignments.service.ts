@@ -23,6 +23,7 @@ export class AssignmentsService {
   /** NGO (or donor) offers the pickup task to a volunteer. */
   async create(user: AuthUser, donationId: string, volunteerId: string) {
     const donation = await this.donations.getById(donationId);
+    await this.donations.assertAssignmentActor(user, donation);
 
     const { data: volunteer } = await this.supabase
       .from('volunteers')

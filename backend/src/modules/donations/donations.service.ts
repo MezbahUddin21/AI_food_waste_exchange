@@ -124,6 +124,19 @@ export class DonationsService {
     return (data ?? []).map(withGeoJsonLocation);
   }
 
+  /** NGO's own claimed donations, restricted at the query boundary. */
+  async listClaims(user: AuthUser) {
+    const ngo = await this.getNgoByUser(user.id);
+    const { data, error } = await this.supabase
+      .from('donations')
+      .select('*, donors(org_name, org_type, address)')
+      .eq('claimed_by_ngo', ngo.id)
+      .in('status', ['claimed', 'assigned', 'in_transit', 'delivered'])
+      .order('created_at', { ascending: false });
+    if (error) throw new BadRequestException(error.message);
+    return (data ?? []).map(withGeoJsonLocation);
+  }
+
   /** NGO claims a listed donation. */
   async claim(user: AuthUser, donationId: string) {
     const ngo = await this.getNgoByUser(user.id);
@@ -187,6 +200,21 @@ export class DonationsService {
       throw new BadRequestException('Donation was modified concurrently — refresh and retry');
     }
     await this.recordEvent(donation.id, donation.status, to, user.id, note);
+  }
+
+  /** Ensure an assignment is created only by a party that owns the donation. */
+  async assertAssignmentActor(user: AuthUser, donation: { donor_id: string; claimed_by_ngo?: string | null }) {
+    if (user.role === 'ngo') {
+      const ngo = await this.getNgoByUser(user.id);
+      if (donation.claimed_by_ngo !== ngo.id) throw new ForbiddenException('Not your claim');
+      return;
+    }
+    if (user.role === 'donor') {
+      const donor = await this.getDonorByUser(user.id);
+      if (donation.donor_id !== donor.id) throw new ForbiddenException('Not your donation');
+      return;
+    }
+    throw new ForbiddenException('Only the donor or claiming NGO can assign a volunteer');
   }
 
   async statusHistory(donationId: string) {
