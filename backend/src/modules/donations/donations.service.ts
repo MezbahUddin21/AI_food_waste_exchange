@@ -25,6 +25,9 @@ export class DonationsService {
   /** Donor creates a listing; ML fills the safe pickup window before insert. */
   async create(user: AuthUser, dto: CreateDonationDto) {
     const donor = await this.getDonorByUser(user.id);
+    if (!donor.verified) {
+      throw new ForbiddenException('Your donor organization must be verified before publishing');
+    }
 
     const spoilage = await this.ml.predictSpoilage({
       food_category: dto.foodCategory,
@@ -84,7 +87,7 @@ export class DonationsService {
       if (!ids.length) return [];
       const { data } = await this.supabase
         .from('donations')
-        .select('*, donors(org_name, org_type, address)')
+        .select('*, donors!inner(org_name, org_type, address, verified)')
         .in('id', ids);
       const distById = new Map((nearby as any[]).map((r) => [r.donation_id, r.distance_km]));
       return (data ?? [])
@@ -94,7 +97,8 @@ export class DonationsService {
 
     let q = this.supabase
       .from('donations')
-      .select('*, donors(org_name, org_type, address)')
+      .select('*, donors!inner(org_name, org_type, address, verified)')
+      .eq('donors.verified', true)
       .order('created_at', { ascending: false })
       .limit(100);
     if (query.status) q = q.eq('status', query.status);
@@ -143,7 +147,19 @@ export class DonationsService {
   async claim(user: AuthUser, donationId: string) {
     await this.expirePastListings();
     const ngo = await this.getNgoByUser(user.id);
+    if (!ngo.verified) {
+      throw new ForbiddenException('Your NGO must be verified before claiming donations');
+    }
     const donation = await this.getById(donationId);
+
+    const { data: donor } = await this.supabase
+      .from('donors')
+      .select('verified')
+      .eq('id', donation.donor_id)
+      .maybeSingle();
+    if (!donor?.verified) {
+      throw new ForbiddenException('This donor organization is not verified');
+    }
 
     if (donation.pickup_window_end && new Date(donation.pickup_window_end) <= new Date()) {
       throw new BadRequestException('This donation is past its safe pickup window');

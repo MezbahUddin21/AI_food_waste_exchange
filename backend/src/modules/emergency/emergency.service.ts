@@ -22,10 +22,13 @@ export class EmergencyService {
   }) {
     const { data: ngo } = await this.supabase
       .from('ngos')
-      .select('id, org_name, location')
+      .select('id, org_name, location, verified')
       .eq('user_id', user.id)
       .maybeSingle();
     if (!ngo) throw new ForbiddenException('No NGO profile');
+    if (!ngo.verified) {
+      throw new ForbiddenException('Your NGO must be verified before broadcasting emergencies');
+    }
 
     const radius = dto.radiusKm ?? 15;
     const { data: request, error } = await this.supabase
