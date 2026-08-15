@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { get, post } from '../lib/api';
-import { Donation, FOOD_LABELS, RankedNgo, timeLeft } from '../lib/types';
+import { Donation, FOOD_LABELS, timeLeft } from '../lib/types';
 import StatusBadge from '../components/StatusBadge';
 import QrModal from '../components/QrModal';
 import { Icon } from '../components/Icon';

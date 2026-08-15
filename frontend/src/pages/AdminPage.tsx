@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { get, post } from '../lib/api';
 import { Icon } from '../components/Icon';
-import { EmptyState, PageHeader } from '../components/ui';
+import { PageHeader } from '../components/ui';
 
 interface PendingOrg {
   id: string;

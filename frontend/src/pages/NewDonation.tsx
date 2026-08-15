@@ -3,13 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { post } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { FOOD_LABELS } from '../lib/types';
+import { localDateTimeValue } from '../lib/date';
 import { Icon } from '../components/Icon';
 import { PageHeader } from '../components/ui';
-
-const localDateTimeValue = (date: Date) => {
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 16);
-};
 
 /** Donor: create a listing. Photo goes to Supabase Storage; AI fills the window. */
 export default function NewDonation() {
