@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon } from '../components/Icon';
 import { useAuth } from '../auth/AuthContext';
+import { get } from '../lib/api';
 
 const FEATURES = [
   {
@@ -51,11 +52,9 @@ export default function Landing() {
   // Public teaser stats — best-effort, quietly skipped if not signed in.
   useEffect(() => {
     if (!session) return;
-    import('../lib/api').then(({ get }) =>
-      get<{ meals_saved: number; kg_diverted: number; co2e_avoided_kg: number }>('/analytics/summary')
-        .then(setStats)
-        .catch(() => {}),
-    );
+    get<{ meals_saved: number; kg_diverted: number; co2e_avoided_kg: number }>('/analytics/summary')
+      .then(setStats)
+      .catch(() => {});
   }, [session]);
 
   return (

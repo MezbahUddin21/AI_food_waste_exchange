@@ -1,21 +1,22 @@
-import { ReactNode } from 'react';
+import { lazy, ReactNode, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import Login from './auth/Login';
 import Signup from './auth/Signup';
 import Layout from './components/Layout';
-import AdminPage from './pages/AdminPage';
-import AnalyticsDashboard from './pages/AnalyticsDashboard';
-import DonationDetail from './pages/DonationDetail';
-import DonorDashboard from './pages/DonorDashboard';
-import EmergencyPage from './pages/EmergencyPage';
 import Landing from './pages/Landing';
-import NewDonation from './pages/NewDonation';
-import NgoClaims from './pages/NgoClaims';
-import NgoDashboard from './pages/NgoDashboard';
-import ProfilePage from './pages/ProfilePage';
 import { About, Contact, HowItWorks, NotFound } from './pages/StaticPages';
-import VolunteerDashboard from './pages/VolunteerDashboard';
+
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const AnalyticsDashboard = lazy(() => import('./pages/AnalyticsDashboard'));
+const DonationDetail = lazy(() => import('./pages/DonationDetail'));
+const DonorDashboard = lazy(() => import('./pages/DonorDashboard'));
+const EmergencyPage = lazy(() => import('./pages/EmergencyPage'));
+const NewDonation = lazy(() => import('./pages/NewDonation'));
+const NgoClaims = lazy(() => import('./pages/NgoClaims'));
+const NgoDashboard = lazy(() => import('./pages/NgoDashboard'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const VolunteerDashboard = lazy(() => import('./pages/VolunteerDashboard'));
 
 /** App home is role-dependent. */
 function Home() {
@@ -55,7 +56,8 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-gray-400">Loadingâ€¦</div>}>
+          <Routes>
           {/* Public */}
           <Route path="/" element={<Landing />} />
           <Route path="/about" element={<About />} />
@@ -80,7 +82,8 @@ export default function App() {
           <Route path="/emergency" element={<Navigate to="/app/emergency" replace />} />
 
           <Route path="*" element={<NotFound />} />
-        </Routes>
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
   );
