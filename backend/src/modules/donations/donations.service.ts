@@ -67,6 +67,7 @@ export class DonationsService {
   }
 
   async list(query: ListDonationsQueryDto) {
+    await this.expirePastListings();
     // near=lat,lng,km uses the PostGIS RPC, then hydrates full rows.
     if (query.near) {
       const [lat, lng, km] = query.near.split(',').map(Number);
@@ -97,6 +98,7 @@ export class DonationsService {
       .order('created_at', { ascending: false })
       .limit(100);
     if (query.status) q = q.eq('status', query.status);
+    if (query.status === 'listed') q = q.gt('pickup_window_end', new Date().toISOString());
     if (query.category) q = q.eq('food_category', query.category);
     const { data, error } = await q;
     if (error) throw new BadRequestException(error.message);
@@ -139,8 +141,13 @@ export class DonationsService {
 
   /** NGO claims a listed donation. */
   async claim(user: AuthUser, donationId: string) {
+    await this.expirePastListings();
     const ngo = await this.getNgoByUser(user.id);
     const donation = await this.getById(donationId);
+
+    if (donation.pickup_window_end && new Date(donation.pickup_window_end) <= new Date()) {
+      throw new BadRequestException('This donation is past its safe pickup window');
+    }
 
     await this.transition(user, donation, 'claimed', { claimed_by_ngo: ngo.id });
 
@@ -226,6 +233,36 @@ export class DonationsService {
     return data ?? [];
   }
 
+  /**
+   * Expire listed donations on demand. This is intentionally idempotent and
+   * concurrency-safe, so every browse/claim request repairs stale listings
+   * even when no background worker is running.
+   */
+  private async expirePastListings() {
+    const now = new Date().toISOString();
+    const { data, error } = await this.supabase
+      .from('donations')
+      .select('id')
+      .eq('status', 'listed')
+      .not('pickup_window_end', 'is', null)
+      .lte('pickup_window_end', now)
+      .limit(500);
+    if (error) throw new BadRequestException(error.message);
+
+    for (const donation of data ?? []) {
+      const { data: updated, error: updateError } = await this.supabase
+        .from('donations')
+        .update({ status: 'expired' })
+        .eq('id', donation.id)
+        .eq('status', 'listed')
+        .select('id');
+      if (updateError) throw new BadRequestException(updateError.message);
+      if (updated?.length) {
+        await this.recordEvent(donation.id, 'listed', 'expired', null, 'Pickup window elapsed');
+      }
+    }
+  }
+
   // ---- helpers ----
 
   async getDonorByUser(userId: string) {
@@ -249,7 +286,7 @@ export class DonationsService {
     donationId: string,
     from: DonationStatus | null,
     to: DonationStatus,
-    actorUserId: string,
+    actorUserId: string | null,
     note?: string,
   ) {
     await this.supabase.from('status_events').insert({
