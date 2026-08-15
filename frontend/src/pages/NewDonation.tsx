@@ -29,7 +29,13 @@ export default function NewDonation() {
     try {
       let photoUrls: string[] = [];
       if (photo) {
-        const path = `${crypto.randomUUID()}-${photo.name}`;
+        const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+        if (!allowedTypes.has(photo.type)) throw new Error('Photo must be JPEG, PNG, WebP, or GIF');
+        if (photo.size > 5 * 1024 * 1024) throw new Error('Photo must be 5 MB or smaller');
+        const { data: authData } = await supabase.auth.getUser();
+        if (!authData.user) throw new Error('You must be signed in to upload a photo');
+        const safeName = photo.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${authData.user.id}/${crypto.randomUUID()}-${safeName}`;
         const { error: upErr } = await supabase.storage.from('food-photos').upload(path, photo);
         if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
         const { data } = supabase.storage.from('food-photos').getPublicUrl(path);
