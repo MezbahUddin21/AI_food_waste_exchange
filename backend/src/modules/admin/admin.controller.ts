@@ -19,16 +19,16 @@ export class AdminController {
     return data ?? [];
   }
 
-  @Post('verify/:orgType/:id')
+  @Post('verify/:profileType/:id')
   @Roles('admin') // government can view, only admin verifies
-  @ApiOperation({ summary: 'Mark a donor or NGO as verified' })
+  @ApiOperation({ summary: 'Mark a donor, NGO, or volunteer as verified' })
   async verify(
-    @Param('orgType') orgType: 'donor' | 'ngo',
+    @Param('profileType') profileType: 'donor' | 'ngo' | 'volunteer',
     @Param('id', ParseUUIDPipe) id: string,
     @Body('verified') verified = true,
   ) {
-    const table = orgType === 'donor' ? 'donors' : orgType === 'ngo' ? 'ngos' : null;
-    if (!table) throw new BadRequestException('orgType must be donor or ngo');
+    const table = profileType === 'donor' ? 'donors' : profileType === 'ngo' ? 'ngos' : profileType === 'volunteer' ? 'volunteers' : null;
+    if (!table) throw new BadRequestException('profileType must be donor, ngo, or volunteer');
     const { error } = await this.supabase.from(table).update({ verified }).eq('id', id);
     if (error) throw new BadRequestException(error.message);
     return { ok: true };
@@ -38,6 +38,10 @@ export class AdminController {
   async pending() {
     const { data: donors } = await this.supabase.from('donors').select('*').eq('verified', false);
     const { data: ngos } = await this.supabase.from('ngos').select('*').eq('verified', false);
-    return { donors: donors ?? [], ngos: ngos ?? [] };
+    const { data: volunteers } = await this.supabase
+      .from('volunteers')
+      .select('*, users!inner(full_name, email)')
+      .eq('verified', false);
+    return { donors: donors ?? [], ngos: ngos ?? [], volunteers: volunteers ?? [] };
   }
 }

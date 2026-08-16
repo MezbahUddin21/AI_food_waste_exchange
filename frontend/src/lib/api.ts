@@ -46,3 +46,5 @@ export async function api<T = unknown>(
 export const get = <T = unknown>(path: string) => api<T>(path);
 export const post = <T = unknown>(path: string, body?: unknown) =>
   api<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined });
+export const patch = <T = unknown>(path: string, body: unknown) =>
+  api<T>(path, { method: 'PATCH', body: JSON.stringify(body) });

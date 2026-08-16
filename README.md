@@ -210,6 +210,7 @@ supabase/migrations/0006_verified_nearby_listings.sql
 supabase/migrations/0007_harden_rls_and_storage.sql
 supabase/migrations/0008_atomic_workflows.sql
 supabase/migrations/0009_reload_postgrest_schema.sql
+supabase/migrations/0010_verified_profile_updates.sql
 ```
 
 ### 2. Backend (NestJS)

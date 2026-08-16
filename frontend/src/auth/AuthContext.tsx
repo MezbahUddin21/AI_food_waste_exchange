@@ -7,6 +7,8 @@ export interface Profile {
   id: string;
   email: string;
   full_name: string;
+  phone: string | null;
+  avatar_url: string | null;
   role: 'donor' | 'ngo' | 'volunteer' | 'government' | 'admin';
   profile: Record<string, unknown> | null;
 }

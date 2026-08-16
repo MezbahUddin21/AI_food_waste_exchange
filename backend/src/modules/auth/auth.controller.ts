@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators';
 import type { AuthUser } from './auth.types';
 import { RegisterProfileDto } from './dto/register-profile.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @ApiTags('auth')
 @ApiBearerAuth()
@@ -21,5 +22,11 @@ export class AuthController {
   @ApiOperation({ summary: 'Current user + role profile' })
   me(@CurrentUser() user: AuthUser) {
     return this.auth.getMe(user.id);
+  }
+
+  @Patch('me')
+  @ApiOperation({ summary: 'Update the verified user profile and role details' })
+  updateMe(@CurrentUser() user: AuthUser, @Body() dto: UpdateProfileDto) {
+    return this.auth.updateMe(user, dto);
   }
 }
