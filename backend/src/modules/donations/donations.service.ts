@@ -225,10 +225,6 @@ export class DonationsService {
       p_note: note ?? null,
     });
     if (error) throw new BadRequestException(error.message);
-    /* Status update and audit event are committed by the RPC.
-      throw new BadRequestException('Donation was modified concurrently — refresh and retry');
-    }
-    */
   }
 
   /** Ensure an assignment is created only by a party that owns the donation. */

@@ -32,7 +32,7 @@ export class AssignmentsService {
       .maybeSingle();
     if (!volunteer) throw new NotFoundException('Volunteer not found');
 
-    // Move donation claimed → assigned (state machine enforces validity + role)
+    // Donation transition, assignment insert, and audit event commit together.
     const { data, error } = await this.supabase
       .rpc('create_assignment_atomic', {
         p_donation_id: donationId,
