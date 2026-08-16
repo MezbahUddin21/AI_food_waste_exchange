@@ -37,6 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(await get<Profile>('/me'));
     } catch {
       setProfile(null); // not registered yet → onboarding will handle it
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,10 +48,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.session) await refreshProfile();
       setLoading(false);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
-      if (s) await refreshProfile();
-      else setProfile(null);
+      if (s) {
+        setLoading(true);
+        // Supabase invokes this callback under an exclusive auth lock. Defer
+        // the API call so getSession() in the fetch wrapper cannot deadlock.
+        setTimeout(() => void refreshProfile(), 0);
+      } else {
+        setProfile(null);
+        setLoading(false);
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
