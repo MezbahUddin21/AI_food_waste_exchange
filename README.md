@@ -196,13 +196,20 @@ Backend feature modules: `auth`, `donations`, `matching`, `assignments`, `emerge
 
 ### 1. Database
 
-Run the migrations **in order** in the Supabase SQL editor:
+Run **every** `.sql` file in `supabase/migrations/` in filename order in the
+Supabase SQL editor. Do not stop at `0004`; later migrations install the
+verified-listing, security, and atomic workflow functions used by the API.
 
 ```
 supabase/migrations/0001_extensions_and_enums.sql
 supabase/migrations/0002_tables.sql
 supabase/migrations/0003_indexes_and_rpc.sql
 supabase/migrations/0004_rls_and_storage.sql
+supabase/migrations/0005_expire_nearby_listings.sql
+supabase/migrations/0006_verified_nearby_listings.sql
+supabase/migrations/0007_harden_rls_and_storage.sql
+supabase/migrations/0008_atomic_workflows.sql
+supabase/migrations/0009_reload_postgrest_schema.sql
 ```
 
 ### 2. Backend (NestJS)
