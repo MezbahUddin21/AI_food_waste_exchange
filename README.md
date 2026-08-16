@@ -192,7 +192,7 @@ Backend feature modules: `auth`, `donations`, `matching`, `assignments`, `emerge
 
 ## Local Setup
 
-**Prerequisites:** Node 20+, Python 3.11+, a free [Supabase](https://supabase.com) project.
+**Prerequisites:** Node 20.19+, Python 3.11+, a free [Supabase](https://supabase.com) project.
 
 ### 1. Database
 
