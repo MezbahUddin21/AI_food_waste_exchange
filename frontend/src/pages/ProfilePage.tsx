@@ -1,9 +1,10 @@
-import { FormEvent, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
 import { useAuth, type Profile } from '../auth/AuthContext';
 import { PageHeader } from '../components/ui';
 import { Icon } from '../components/Icon';
 import { patch } from '../lib/api';
 import { geocode } from '../lib/geocode';
+import { supabase } from '../lib/supabase';
 
 const ROLE_LABEL: Record<string, string> = {
   donor: 'Food Donor',
@@ -39,7 +40,8 @@ function ProfileForm({ profile, refreshProfile }: { profile: Profile; refreshPro
 
   const [fullName, setFullName] = useState(profile.full_name);
   const [phone, setPhone] = useState(profile.phone ?? '');
-  const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url ?? '');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
   const [orgName, setOrgName] = useState(String(details.org_name ?? ''));
   const [orgType, setOrgType] = useState(String(details.org_type ?? 'other'));
   const [address, setAddress] = useState(String(details.address ?? ''));
@@ -55,6 +57,36 @@ function ProfileForm({ profile, refreshProfile }: { profile: Profile; refreshPro
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
+  useEffect(() => {
+    if (!avatarFile) {
+      setAvatarPreview('');
+      return;
+    }
+    const preview = URL.createObjectURL(avatarFile);
+    setAvatarPreview(preview);
+    return () => URL.revokeObjectURL(preview);
+  }, [avatarFile]);
+
+  const chooseAvatar = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setError('');
+    if (!file) {
+      setAvatarFile(null);
+      return;
+    }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Avatar must be a JPG, PNG, or WebP image');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Avatar must be 2 MB or smaller');
+      event.target.value = '';
+      return;
+    }
+    setAvatarFile(file);
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true);
@@ -64,7 +96,6 @@ function ProfileForm({ profile, refreshProfile }: { profile: Profile; refreshPro
       const body: Record<string, unknown> = {};
       if (fullName.trim() !== profile.full_name) body.fullName = fullName.trim();
       if (phone.trim() !== (profile.phone ?? '')) body.phone = phone.trim();
-      if (avatarUrl.trim() !== (profile.avatar_url ?? '')) body.avatarUrl = avatarUrl.trim();
 
       if (profile.role === 'donor' || profile.role === 'ngo') {
         if (orgName.trim() !== details.org_name) body.orgName = orgName.trim();
@@ -92,12 +123,27 @@ function ProfileForm({ profile, refreshProfile }: { profile: Profile; refreshPro
         }
       }
 
+      if (avatarFile) {
+        const avatarPath = `${profile.id}/avatar`;
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(avatarPath, avatarFile, {
+            upsert: true,
+            contentType: avatarFile.type,
+            cacheControl: '3600',
+          });
+        if (uploadError) throw uploadError;
+        const { data } = supabase.storage.from('avatars').getPublicUrl(avatarPath);
+        body.avatarUrl = `${data.publicUrl}?v=${Date.now()}`;
+      }
+
       if (!Object.keys(body).length) throw new Error('No profile changes to save');
       const roleDetailsChanged = Object.keys(body).some((key) =>
         !['fullName', 'phone', 'avatarUrl', 'available'].includes(key),
       );
       await patch('/me', body);
       await refreshProfile();
+      setAvatarFile(null);
       setMessage(roleDetailsChanged
         ? 'Changes saved. Your profile is pending administrator re-verification.'
         : 'Profile settings saved.');
@@ -113,8 +159,8 @@ function ProfileForm({ profile, refreshProfile }: { profile: Profile; refreshPro
       <PageHeader title="Profile & settings" subtitle="Manage your account and role details" />
 
       <div className="card mb-5 flex items-center gap-4">
-        {profile.avatar_url ? (
-          <img src={profile.avatar_url} alt="" className="h-16 w-16 rounded-2xl object-cover" />
+        {avatarPreview || profile.avatar_url ? (
+          <img src={avatarPreview || profile.avatar_url || ''} alt="" className="h-16 w-16 rounded-2xl object-cover" />
         ) : (
           <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-100 font-display text-xl font-bold text-brand-700">
             {profile.full_name.split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase()}
@@ -158,8 +204,22 @@ function ProfileForm({ profile, refreshProfile }: { profile: Profile; refreshPro
                 <input className="input" value={phone} onChange={(event) => setPhone(event.target.value)} maxLength={30} />
               </div>
               <div className="sm:col-span-2">
-                <label className="label">Avatar image URL</label>
-                <input className="input" type="url" value={avatarUrl} onChange={(event) => setAvatarUrl(event.target.value)} placeholder="https://…" />
+                <label className="label">Profile photo</label>
+                <label className="flex cursor-pointer items-center gap-4 rounded-xl border border-dashed border-gray-300 p-4 transition-colors hover:border-brand-400 hover:bg-brand-50/40">
+                  {avatarPreview || profile.avatar_url ? (
+                    <img src={avatarPreview || profile.avatar_url || ''} alt="Avatar preview" className="h-14 w-14 rounded-xl object-cover" />
+                  ) : (
+                    <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-gray-100 text-gray-400">
+                      <Icon name="user" className="h-6 w-6" />
+                    </span>
+                  )}
+                  <span>
+                    <span className="block text-sm font-semibold text-gray-700">Choose an image</span>
+                    <span className="block text-xs text-gray-400">JPG, PNG, or WebP · maximum 2 MB</span>
+                    {avatarFile && <span className="mt-1 block text-xs font-medium text-brand-600">{avatarFile.name}</span>}
+                  </span>
+                  <input className="sr-only" type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseAvatar} />
+                </label>
               </div>
               <div className="sm:col-span-2">
                 <label className="label">Email</label>

@@ -19,6 +19,60 @@ export class AdminController {
     return data ?? [];
   }
 
+  @Get('dashboard')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Administrator platform overview' })
+  async dashboard() {
+    const [
+      totalUsers,
+      donors,
+      ngos,
+      volunteers,
+      governmentUsers,
+      admins,
+      totalDonations,
+      activeDonations,
+      completedDonations,
+      openEmergencies,
+      pendingDonors,
+      pendingNgos,
+      pendingVolunteers,
+      recentUsers,
+    ] = await Promise.all([
+      this.supabase.from('users').select('*', { count: 'exact', head: true }),
+      this.supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'donor'),
+      this.supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'ngo'),
+      this.supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'volunteer'),
+      this.supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'government'),
+      this.supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'admin'),
+      this.supabase.from('donations').select('*', { count: 'exact', head: true }),
+      this.supabase.from('donations').select('*', { count: 'exact', head: true }).eq('status', 'listed'),
+      this.supabase.from('donations').select('*', { count: 'exact', head: true }).eq('status', 'verified'),
+      this.supabase.from('emergency_requests').select('*', { count: 'exact', head: true }).eq('status', 'open'),
+      this.supabase.from('donors').select('*', { count: 'exact', head: true }).eq('verified', false),
+      this.supabase.from('ngos').select('*', { count: 'exact', head: true }).eq('verified', false),
+      this.supabase.from('volunteers').select('*', { count: 'exact', head: true }).eq('verified', false),
+      this.supabase.from('users').select('id, full_name, email, role, avatar_url, created_at').order('created_at', { ascending: false }).limit(8),
+    ]);
+
+    return {
+      total_users: totalUsers.count ?? 0,
+      role_counts: {
+        donors: donors.count ?? 0,
+        ngos: ngos.count ?? 0,
+        volunteers: volunteers.count ?? 0,
+        government: governmentUsers.count ?? 0,
+        admins: admins.count ?? 0,
+      },
+      total_donations: totalDonations.count ?? 0,
+      active_donations: activeDonations.count ?? 0,
+      completed_donations: completedDonations.count ?? 0,
+      open_emergencies: openEmergencies.count ?? 0,
+      pending_verifications: (pendingDonors.count ?? 0) + (pendingNgos.count ?? 0) + (pendingVolunteers.count ?? 0),
+      recent_users: recentUsers.data ?? [],
+    };
+  }
+
   @Post('verify/:profileType/:id')
   @Roles('admin') // government can view, only admin verifies
   @ApiOperation({ summary: 'Mark a donor, NGO, or volunteer as verified' })

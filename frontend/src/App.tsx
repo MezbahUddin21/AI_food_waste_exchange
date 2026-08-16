@@ -8,6 +8,7 @@ import Landing from './pages/Landing';
 import { About, Contact, HowItWorks, NotFound } from './pages/StaticPages';
 
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AnalyticsDashboard = lazy(() => import('./pages/AnalyticsDashboard'));
 const DonationDetail = lazy(() => import('./pages/DonationDetail'));
 const DonorDashboard = lazy(() => import('./pages/DonorDashboard'));
@@ -29,8 +30,9 @@ function Home() {
     case 'volunteer':
       return <VolunteerDashboard />;
     case 'government':
-    case 'admin':
       return <AnalyticsDashboard />;
+    case 'admin':
+      return <AdminDashboard />;
     default:
       return <Navigate to="/signup" replace />;
   }

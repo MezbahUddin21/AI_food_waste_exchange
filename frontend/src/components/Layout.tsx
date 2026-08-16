@@ -32,7 +32,8 @@ const NAV: Record<string, { to: string; label: string; icon: IconName }[]> = {
   ],
   government: [{ to: '/app', label: 'Analytics', icon: 'chart' }],
   admin: [
-    { to: '/app', label: 'Analytics', icon: 'chart' },
+    { to: '/app', label: 'Dashboard', icon: 'home' },
+    { to: '/app/impact', label: 'Analytics', icon: 'chart' },
     { to: '/app/admin', label: 'Verifications', icon: 'shield' },
   ],
 };
