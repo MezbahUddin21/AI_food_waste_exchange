@@ -11,7 +11,11 @@ export type NotificationType =
   | 'delivery_verified'
   | 'pickup_reminder'
   | 'expiry_warning'
-  | 'emergency_broadcast';
+  | 'emergency_broadcast'
+  | 'profile_verified'
+  | 'profile_change_approved'
+  | 'profile_change_rejected'
+  | 'admin_message';
 
 @Injectable()
 export class NotificationsService {

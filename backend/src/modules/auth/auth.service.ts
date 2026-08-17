@@ -110,7 +110,14 @@ export class AuthService {
         .maybeSingle();
       roleProfile = data;
     }
-    return { ...profile, profile: roleProfile };
+    const { data: changeRequest } = await this.supabase
+      .from('profile_change_requests')
+      .select('id, status, requested_values, admin_message, created_at, reviewed_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return { ...profile, profile: roleProfile, change_request: changeRequest ?? null };
   }
 
   /**

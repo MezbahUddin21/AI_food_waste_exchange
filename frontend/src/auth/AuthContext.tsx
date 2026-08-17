@@ -11,6 +11,14 @@ export interface Profile {
   avatar_url: string | null;
   role: 'donor' | 'ngo' | 'volunteer' | 'government' | 'admin';
   profile: Record<string, unknown> | null;
+  change_request: {
+    id: string;
+    status: 'pending' | 'approved' | 'rejected';
+    requested_values: Record<string, unknown>;
+    admin_message: string | null;
+    created_at: string;
+    reviewed_at: string | null;
+  } | null;
 }
 
 interface AuthCtx {

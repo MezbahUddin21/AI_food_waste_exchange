@@ -86,6 +86,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     .toUpperCase();
 
   const notificationTarget = (n: Notification): string => {
+    if (n.type.startsWith('profile_') || n.type === 'admin_message') return '/app/profile';
     if (n.data?.emergency_request_id) return '/app/emergency';
     if (n.type === 'assignment_offered' || n.type === 'assignment_accepted') return '/app';
     if (n.data?.donation_id) return `/app/donations/${n.data.donation_id}`;

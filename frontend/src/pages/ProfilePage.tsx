@@ -36,6 +36,7 @@ function ProfileForm({ profile, refreshProfile }: { profile: Profile; refreshPro
   const details = (profile.profile ?? {}) as Record<string, unknown>;
   const roleNeedsApproval = ['donor', 'ngo', 'volunteer'].includes(profile.role);
   const verified = !roleNeedsApproval || details.verified === true;
+  const pendingChange = profile.change_request?.status === 'pending';
   const originalFoods = (details.accepted_food_types as string[] | undefined) ?? [];
 
   const [fullName, setFullName] = useState(profile.full_name);
@@ -97,7 +98,7 @@ function ProfileForm({ profile, refreshProfile }: { profile: Profile; refreshPro
       if (fullName.trim() !== profile.full_name) body.fullName = fullName.trim();
       if (phone.trim() !== (profile.phone ?? '')) body.phone = phone.trim();
 
-      if (profile.role === 'donor' || profile.role === 'ngo') {
+      if (!pendingChange && (profile.role === 'donor' || profile.role === 'ngo')) {
         if (orgName.trim() !== details.org_name) body.orgName = orgName.trim();
         if (address.trim() !== details.address) {
           const location = await geocode(address.trim());
@@ -106,12 +107,12 @@ function ProfileForm({ profile, refreshProfile }: { profile: Profile; refreshPro
           body.location = { lat: location.lat, lng: location.lng };
         }
       }
-      if (profile.role === 'donor' && orgType !== details.org_type) body.orgType = orgType;
-      if (profile.role === 'ngo') {
+      if (!pendingChange && profile.role === 'donor' && orgType !== details.org_type) body.orgType = orgType;
+      if (!pendingChange && profile.role === 'ngo') {
         if (capacity !== Number(details.capacity_meals_per_day)) body.capacityMealsPerDay = capacity;
         if (!sameList(acceptedFoods, originalFoods)) body.acceptedFoodTypes = acceptedFoods;
       }
-      if (profile.role === 'volunteer') {
+      if (!pendingChange && profile.role === 'volunteer') {
         if (vehicle !== details.vehicle_type) body.vehicleType = vehicle;
         if (maxCarryKg !== Number(details.max_carry_kg)) body.maxCarryKg = maxCarryKg;
         if (radius !== Number(details.service_radius_km)) body.serviceRadiusKm = radius;
@@ -145,7 +146,7 @@ function ProfileForm({ profile, refreshProfile }: { profile: Profile; refreshPro
       await refreshProfile();
       setAvatarFile(null);
       setMessage(roleDetailsChanged
-        ? 'Changes saved. Your profile is pending administrator re-verification.'
+        ? 'Changes submitted for administrator review. Your current verified details remain active until approval.'
         : 'Profile settings saved.');
     } catch (err) {
       setError((err as Error).message);
@@ -185,8 +186,17 @@ function ProfileForm({ profile, refreshProfile }: { profile: Profile; refreshPro
 
       {!verified && (
         <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          An administrator must verify your profile before editing is enabled. If you recently changed role details,
-          they are saved and waiting for re-verification.
+          An administrator must verify your profile before editing is enabled.
+        </div>
+      )}
+
+      {profile.change_request && (
+        <div className={`mb-5 rounded-2xl border p-4 text-sm ${profile.change_request.status === 'rejected' ? 'border-red-200 bg-red-50 text-red-800' : profile.change_request.status === 'approved' ? 'border-green-200 bg-green-50 text-green-800' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>
+          <p className="font-semibold">
+            {profile.change_request.status === 'pending' ? 'Profile changes are awaiting administrator review' : profile.change_request.status === 'approved' ? 'Your profile changes were approved' : 'Your profile changes need attention'}
+          </p>
+          {profile.change_request.admin_message && <p className="mt-1">Administrator message: {profile.change_request.admin_message}</p>}
+          {pendingChange && <p className="mt-1 text-xs opacity-80">Your currently verified details remain active until the request is approved.</p>}
         </div>
       )}
 
@@ -230,9 +240,10 @@ function ProfileForm({ profile, refreshProfile }: { profile: Profile; refreshPro
           </div>
 
           {(profile.role === 'donor' || profile.role === 'ngo') && (
+            <fieldset disabled={pendingChange} className="disabled:opacity-60">
             <div className="card">
               <h2 className="section-title mb-1">Organization details</h2>
-              <p className="mb-4 text-xs text-amber-700">Changing these fields requires administrator re-verification.</p>
+              <p className="mb-4 text-xs text-amber-700">Changes to these fields require administrator approval before they take effect.</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <label className="label">Organization name</label>
@@ -273,12 +284,14 @@ function ProfileForm({ profile, refreshProfile }: { profile: Profile; refreshPro
                 )}
               </div>
             </div>
+            </fieldset>
           )}
 
           {profile.role === 'volunteer' && (
+            <fieldset disabled={pendingChange} className="disabled:opacity-60">
             <div className="card">
               <h2 className="section-title mb-1">Volunteer settings</h2>
-              <p className="mb-4 text-xs text-amber-700">Transport and service-area changes require administrator re-verification.</p>
+              <p className="mb-4 text-xs text-amber-700">Transport and service-area changes require administrator approval before they take effect.</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div><label className="label">Vehicle</label><select className="input" value={vehicle} onChange={(event) => setVehicle(event.target.value)}><option value="none">On foot</option><option value="bike">Bicycle</option><option value="motorbike">Motorbike</option><option value="car">Car</option><option value="van">Van</option></select></div>
                 <div><label className="label">Maximum carry (kg)</label><input className="input" type="number" min={0} step="0.1" value={maxCarryKg} onChange={(event) => setMaxCarryKg(Number(event.target.value))} /></div>
@@ -290,6 +303,7 @@ function ProfileForm({ profile, refreshProfile }: { profile: Profile; refreshPro
                 </label>
               </div>
             </div>
+            </fieldset>
           )}
         </fieldset>
 
